@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Plus, X } from "lucide-react";
+import { Plus, X, ChevronRight } from "lucide-react";
 
 type Entreprise = {
   id: number;
@@ -29,6 +30,7 @@ const COULEUR_STATUT: Record<string, string> = {
 
 export default function PageEntreprises() {
   const { utilisateur } = useAuth();
+  const router = useRouter();
   const estStaff = utilisateur?.role !== "CLIENT";
   const [entreprises, setEntreprises] = useState<Entreprise[]>([]);
   const [chargement, setChargement] = useState(true);
@@ -41,8 +43,6 @@ export default function PageEntreprises() {
   useEffect(recharger, []);
 
   async function gererConversion(id: number, statut: string) {
-    // Mise à jour optimiste : on met à jour l'affichage tout de suite,
-    // sans attendre la réponse serveur, pour une interface qui semble instantanée.
     setEntreprises((prev) => prev.map((e) => (e.id === id ? { ...e, statut } : e)));
     await api.entreprises.convertir(id, statut).catch(() => recharger());
   }
@@ -61,7 +61,7 @@ export default function PageEntreprises() {
         {estStaff && (
           <button
             onClick={() => setModalOuverte(true)}
-            className="flex items-center gap-1.5 bg-accent text-ink text-sm font-medium px-3.5 py-2 rounded-md hover:opacity-90 transition-opacity"
+            className="flex items-center gap-1.5 bg-accent text-accent-contrast text-sm font-medium px-3.5 py-2 rounded-md hover:opacity-90 transition-opacity"
           >
             <Plus size={15} /> Nouvelle entreprise
           </button>
@@ -81,12 +81,17 @@ export default function PageEntreprises() {
                 <th className="text-left px-5 py-3 font-medium">SIRET</th>
                 <th className="text-left px-5 py-3 font-medium">Statut</th>
                 {estStaff && <th className="text-left px-5 py-3 font-medium">Avancer</th>}
+                <th className="w-8"></th>
               </tr>
             </thead>
             <tbody>
               {entreprises.map((e) => (
-                <tr key={e.id} className="border-b border-border last:border-0">
-                  <td className="px-5 py-3 text-text">{e.nom}</td>
+                <tr
+                  key={e.id}
+                  onClick={() => router.push(`/entreprises/${e.id}`)}
+                  className="border-b border-border last:border-0 cursor-pointer hover:bg-surface-raised transition-colors group"
+                >
+                  <td className="px-5 py-3 text-text font-medium">{e.nom}</td>
                   <td className="px-5 py-3 text-text-muted">{e.siret || "—"}</td>
                   <td className="px-5 py-3">
                     <span className={`text-xs px-2 py-1 rounded-full ${COULEUR_STATUT[e.statut]}`}>
@@ -94,7 +99,7 @@ export default function PageEntreprises() {
                     </span>
                   </td>
                   {estStaff && (
-                    <td className="px-5 py-3">
+                    <td className="px-5 py-3" onClick={(ev) => ev.stopPropagation()}>
                       <select
                         value={e.statut}
                         onChange={(ev) => gererConversion(e.id, ev.target.value)}
@@ -106,6 +111,9 @@ export default function PageEntreprises() {
                       </select>
                     </td>
                   )}
+                  <td className="px-3 text-text-muted group-hover:text-accent transition-colors">
+                    <ChevronRight size={16} />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -168,7 +176,7 @@ function ModalNouvelleEntreprise({ onFerme, onCree }: { onFerme: () => void; onC
           {erreur && <p className="text-danger text-xs">{erreur}</p>}
           <button
             type="submit"
-            className="w-full bg-accent text-ink font-medium rounded-md py-2 text-sm hover:opacity-90 transition-opacity"
+            className="w-full bg-accent text-accent-contrast font-medium rounded-md py-2 text-sm hover:opacity-90 transition-opacity"
           >
             Créer
           </button>

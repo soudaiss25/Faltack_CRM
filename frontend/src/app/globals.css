@@ -1,18 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  /* Palette "cabinet financier" : ardoise profonde + accent ambre (compta/monnaie, sans être clic-terracotta-IA) */
-  --color-ink: #0f1729;        /* fond principal, très sombre bleu-ardoise */
-  --color-surface: #16213a;    /* cartes, panneaux */
-  --color-surface-raised: #1d2b4a; /* éléments interactifs au repos */
-  --color-border: #2a3a5c;
-  --color-text: #e8ecf5;
-  --color-text-muted: #8b96b3;
-  --color-accent: #d4a24c;     /* ambre — rappelle le cuivre/la monnaie, pas le terracotta IA */
-  --color-accent-soft: #3a3120;
-  --color-success: #4ade80;
-  --color-danger: #f87171;
-  --color-warning: #fbbf24;
+  --color-ink: #f8f8fc;
+  --color-surface: #ffffff;
+  --color-surface-raised: #f1f0fc;
+  --color-border: #e6e5f5;
+  --color-text: #17172b;
+  --color-text-muted: #6d6d87;
+  --color-accent: #5b5cf0;
+  --color-accent-soft: #edecfd;
+  --color-accent-contrast: #ffffff;
+  --color-success: #16a34a;
+  --color-danger: #e11d48;
+  --color-warning: #d97706;
 
   --font-display: "Fraunces", Georgia, serif;
   --font-body: "Inter", -apple-system, sans-serif;
@@ -27,6 +27,7 @@
   --color-text-muted: var(--color-text-muted);
   --color-accent: var(--color-accent);
   --color-accent-soft: var(--color-accent-soft);
+  --color-accent-contrast: var(--color-accent-contrast);
   --color-success: var(--color-success);
   --color-danger: var(--color-danger);
   --color-warning: var(--color-warning);
@@ -46,5 +47,5 @@ body {
 
 ::selection {
   background: var(--color-accent);
-  color: var(--color-ink);
+  color: var(--color-accent-contrast);
 }

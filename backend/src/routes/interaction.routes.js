@@ -1,11 +1,12 @@
 const express = require("express");
 const router = express.Router();
 const { verifierToken, appliquerPortee } = require("../middleware/auth");
-const { statistiques, journal } = require("../controllers/dashboard.controller");
+const ctrl = require("../controllers/interaction.controller");
 
 router.use(verifierToken);
 router.use(appliquerPortee);
-router.get("/stats", statistiques);
-router.get("/journal", journal);
+
+router.get("/entreprises/:entrepriseId/interactions", ctrl.lister);
+router.post("/entreprises/:entrepriseId/interactions", ctrl.creer);
 
 module.exports = router;

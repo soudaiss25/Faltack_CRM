@@ -20,7 +20,7 @@ async function obtenirUne(req, res) {
   }
 
   const entreprise = await Entreprise.findByPk(req.params.id, {
-    include: ["contacts", "factures"],
+    include: ["contacts", "factures", "interactions"],
   });
   if (!entreprise) return res.status(404).json({ erreur: "Entreprise introuvable" });
   res.json(entreprise);

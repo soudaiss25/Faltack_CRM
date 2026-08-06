@@ -1,9 +1,6 @@
 const { Facture, LigneFacture, Paiement, Entreprise } = require("../models");
+const PDFDocument = require("pdfkit");
 
-/**
- * Génère un numéro de facture auto (ex: FAC-2026-0001).
- * Simple mais suffisant pour la démo : compte les factures de l'année en cours.
- */
 async function genererNumero(type) {
   const annee = new Date().getFullYear();
   const prefixe = type === "DEVIS" ? "DEV" : "FAC";
@@ -11,7 +8,6 @@ async function genererNumero(type) {
   return `${prefixe}-${annee}-${String(count + 1).padStart(4, "0")}`;
 }
 
-// Calcule montant HT, TVA, TTC et solde restant dû à partir des lignes + paiements
 function calculerMontants(facture) {
   const montantHT = facture.lignes.reduce(
     (total, ligne) => total + Number(ligne.quantite) * Number(ligne.prix_unitaire),
@@ -25,6 +21,15 @@ function calculerMontants(facture) {
   return { montantHT, montantTVA, montantTTC, totalPaye, soldeDu };
 }
 
+function determinerStatutAffiche(facture, montants) {
+  const estImpayee = montants.soldeDu > 0;
+  const aUneEcheance = facture.date_echeance && new Date(facture.date_echeance) < new Date();
+  if (estImpayee && aUneEcheance && facture.statut !== "BROUILLON") {
+    return "EN_RETARD";
+  }
+  return facture.statut;
+}
+
 async function lister(req, res) {
   const where = req.portee ? { entreprise_id: req.portee.entreprise_id } : {};
 
@@ -33,7 +38,10 @@ async function lister(req, res) {
     include: ["lignes", "paiements", { model: Entreprise }],
     order: [["date_emission", "DESC"]],
   });
-  const resultat = factures.map((f) => ({ ...f.toJSON(), montants: calculerMontants(f) }));
+  const resultat = factures.map((f) => {
+    const montants = calculerMontants(f);
+    return { ...f.toJSON(), statut: determinerStatutAffiche(f, montants), montants };
+  });
   res.json(resultat);
 }
 
@@ -43,19 +51,14 @@ async function obtenirUne(req, res) {
   });
   if (!facture) return res.status(404).json({ erreur: "Facture introuvable" });
 
-  // Un client ne peut consulter que les factures de SA propre entreprise
   if (req.portee && facture.entreprise_id !== req.portee.entreprise_id) {
     return res.status(403).json({ erreur: "Accès non autorisé à cette facture" });
   }
 
-  res.json({ ...facture.toJSON(), montants: calculerMontants(facture) });
+  const montants = calculerMontants(facture);
+  res.json({ ...facture.toJSON(), statut: determinerStatutAffiche(facture, montants), montants });
 }
 
-/**
- * Création "imbriquée", même principe que pour la pharmacie :
- * on envoie la facture + ses lignes en un seul appel API.
- * Body attendu: { entreprise_id, type, date_emission, date_echeance, taux_tva, lignes: [...] }
- */
 async function creer(req, res) {
   if (req.portee) {
     return res.status(403).json({ erreur: "Action réservée au staff du cabinet" });
@@ -78,10 +81,6 @@ async function creer(req, res) {
   }
 }
 
-/**
- * Enregistre un paiement (potentiellement partiel) et met à jour
- * automatiquement le statut de la facture en fonction du solde restant.
- */
 async function enregistrerPaiement(req, res) {
   if (req.portee) {
     return res.status(403).json({ erreur: "Action réservée au staff du cabinet" });
@@ -95,7 +94,6 @@ async function enregistrerPaiement(req, res) {
     const factureMaj = await Facture.findByPk(facture.id, { include: ["lignes", "paiements"] });
     const montants = calculerMontants(factureMaj);
 
-    // Mise à jour automatique du statut selon le solde restant dû
     if (montants.soldeDu <= 0) {
       factureMaj.statut = "PAYEE";
     } else if (montants.totalPaye > 0) {
@@ -109,4 +107,81 @@ async function enregistrerPaiement(req, res) {
   }
 }
 
-module.exports = { lister, obtenirUne, creer, enregistrerPaiement };
+async function genererPDF(req, res) {
+  const facture = await Facture.findByPk(req.params.id, {
+    include: ["lignes", "paiements", { model: Entreprise }],
+  });
+  if (!facture) return res.status(404).json({ erreur: "Facture introuvable" });
+
+  if (req.portee && facture.entreprise_id !== req.portee.entreprise_id) {
+    return res.status(403).json({ erreur: "Accès non autorisé à cette facture" });
+  }
+
+  const montants = calculerMontants(facture);
+  const statutAffiche = determinerStatutAffiche(facture, montants);
+
+  const doc = new PDFDocument({ margin: 50 });
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${facture.numero}.pdf"`);
+  doc.pipe(res);
+
+  const formater = (n) => `${Number(n).toFixed(2)} €`;
+
+  doc.fontSize(20).text(facture.type === "DEVIS" ? "DEVIS" : "FACTURE", { align: "left" });
+  doc.fontSize(10).fillColor("#555").text(facture.numero, { align: "left" });
+  doc.moveDown(1.5);
+
+  doc.fillColor("#000").fontSize(10);
+  doc.text(`Date d'émission : ${new Date(facture.date_emission).toLocaleDateString("fr-FR")}`);
+  if (facture.date_echeance) {
+    doc.text(`Échéance : ${new Date(facture.date_echeance).toLocaleDateString("fr-FR")}`);
+  }
+  doc.text(`Client : ${facture.Entreprise?.nom || "—"}`);
+  doc.moveDown(1.5);
+
+  const startX = 50;
+  let y = doc.y;
+  doc.font("Helvetica-Bold");
+  doc.text("Désignation", startX, y, { width: 220 });
+  doc.text("Qté", startX + 220, y, { width: 60, align: "right" });
+  doc.text("P.U.", startX + 280, y, { width: 80, align: "right" });
+  doc.text("Total", startX + 360, y, { width: 90, align: "right" });
+  doc.font("Helvetica");
+  y += 18;
+  doc.moveTo(startX, y).lineTo(startX + 450, y).strokeColor("#ccc").stroke();
+  y += 8;
+
+  facture.lignes.forEach((ligne) => {
+    const totalLigne = Number(ligne.quantite) * Number(ligne.prix_unitaire);
+    doc.text(ligne.designation, startX, y, { width: 220 });
+    doc.text(String(ligne.quantite), startX + 220, y, { width: 60, align: "right" });
+    doc.text(formater(ligne.prix_unitaire), startX + 280, y, { width: 80, align: "right" });
+    doc.text(formater(totalLigne), startX + 360, y, { width: 90, align: "right" });
+    y += 20;
+  });
+
+  y += 10;
+  doc.moveTo(startX + 280, y).lineTo(startX + 450, y).strokeColor("#ccc").stroke();
+  y += 10;
+
+  doc.text(`Total HT`, startX + 280, y, { width: 80, align: "right" });
+  doc.text(formater(montants.montantHT), startX + 360, y, { width: 90, align: "right" });
+  y += 16;
+  doc.text(`TVA (${facture.taux_tva}%)`, startX + 280, y, { width: 80, align: "right" });
+  doc.text(formater(montants.montantTVA), startX + 360, y, { width: 90, align: "right" });
+  y += 16;
+  doc.font("Helvetica-Bold");
+  doc.text(`Total TTC`, startX + 280, y, { width: 80, align: "right" });
+  doc.text(formater(montants.montantTTC), startX + 360, y, { width: 90, align: "right" });
+  doc.font("Helvetica");
+  y += 30;
+
+  doc.fontSize(10).fillColor("#333");
+  doc.text(`Statut : ${statutAffiche.replace(/_/g, " ")}`, startX, y);
+  y += 16;
+  doc.text(`Payé : ${formater(montants.totalPaye)}  —  Solde dû : ${formater(montants.soldeDu)}`, startX, y);
+
+  doc.end();
+}
+
+module.exports = { lister, obtenirUne, creer, enregistrerPaiement, genererPDF };

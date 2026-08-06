@@ -8,6 +8,7 @@ router.use(appliquerPortee);
 
 router.get("/", ctrl.lister);
 router.get("/:id", ctrl.obtenirUne);
+router.get("/:id/pdf", ctrl.genererPDF);
 router.post("/", ctrl.creer);
 router.post("/:id/paiements", ctrl.enregistrerPaiement);
 
