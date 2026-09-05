@@ -4,13 +4,17 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
-import { LayoutDashboard, Building2, FileText, LogOut,BookOpen } from "lucide-react";
+import { LayoutDashboard, Building2, FileText, LogOut,BookOpen , Users, Briefcase } from "lucide-react";
+
 
 const NAVIGATION = [
+  
   { href: "/dashboard", label: "Dashboard", icone: LayoutDashboard },
   { href: "/entreprises", label: "Entreprises", icone: Building2 },
   { href: "/factures", label: "Factures", icone: FileText },
   { href: "/journal", label: "Journal de caisse", icone: BookOpen },
+  { href: "/cabinet", label: "Mon cabinet", icone: Briefcase },
+  { href: "/utilisateurs", label: "Utilisateurs", icone: Users },
 ];
 
 export default function LayoutApplication({ children }: { children: React.ReactNode }) {

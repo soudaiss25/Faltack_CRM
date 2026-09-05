@@ -46,7 +46,7 @@ export default function PageConnexion() {
             <span className="text-xs tracking-[0.2em] uppercase text-text-muted">Faltack</span>
           </div>
           <h1 className="font-[family-name:var(--font-display)] italic text-3xl text-text">
-            Gestion financière
+            Faltack CRM
           </h1>
           <p className="text-text-muted text-sm mt-2">Connectez-vous à votre espace</p>
         </div>

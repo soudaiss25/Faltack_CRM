@@ -25,7 +25,14 @@ export const api = {
     appel("/auth/connexion", { method: "POST", body: JSON.stringify({ email, mot_de_passe }) }),
 
   dashboard: {
-    stats: () => appel("/dashboard/stats"),
+    stats: (params?: { entreprise_id?: number; date_debut?: string; date_fin?: string }) => {
+      const qs = new URLSearchParams();
+      if (params?.entreprise_id) qs.set("entreprise_id", String(params.entreprise_id));
+      if (params?.date_debut) qs.set("date_debut", params.date_debut);
+      if (params?.date_fin) qs.set("date_fin", params.date_fin);
+      const suffix = qs.toString() ? `?${qs.toString()}` : "";
+      return appel(`/dashboard/stats${suffix}`);
+    },
   },
   entreprises: {
     lister: (statut?: string) => appel(`/entreprises${statut ? `?statut=${statut}` : ""}`),
@@ -72,7 +79,64 @@ export const api = {
       appel(`/entreprises/${entrepriseId}/interactions`, { method: "POST", body: JSON.stringify(data) }),
   },
 
+  depenses: {
+    lister: (entrepriseId: number) => appel(`/entreprises/${entrepriseId}/depenses`),
+    creer: (entrepriseId: number, data: Record<string, unknown>) =>
+      appel(`/entreprises/${entrepriseId}/depenses`, { method: "POST", body: JSON.stringify(data) }),
+    supprimer: (id: number) => appel(`/depenses/${id}`, { method: "DELETE" }),
+  },
+
+  analyse: {
+    obtenir: (entrepriseId: number) => appel(`/entreprises/${entrepriseId}/analyse`),
+  },
+
   journal: {
     obtenir: () => appel("/dashboard/journal"),
+  },
+
+  utilisateurs: {
+    lister: () => appel("/utilisateurs"),
+    creer: (data: Record<string, unknown>) =>
+      appel("/utilisateurs", { method: "POST", body: JSON.stringify(data) }),
+    mettreAJour: (id: number, data: Record<string, unknown>) =>
+      appel(`/utilisateurs/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    supprimer: (id: number) => appel(`/utilisateurs/${id}`, { method: "DELETE" }),
+  },
+
+   honoraires: {
+    lister: (entrepriseId: number) => appel(`/entreprises/${entrepriseId}/honoraires`),
+    creer: (entrepriseId: number, data: Record<string, unknown>) =>
+      appel(`/entreprises/${entrepriseId}/honoraires`, { method: "POST", body: JSON.stringify(data) }),
+    creerOccasionnelle: (data: Record<string, unknown>) =>
+      appel(`/honoraires/occasionnel`, { method: "POST", body: JSON.stringify(data) }),
+    listerPaiements: (params?: { type?: string; montant_min?: number; montant_max?: number; date_debut?: string; date_fin?: string }) => {
+      const qs = new URLSearchParams();
+      if (params?.type) qs.set("type", params.type);
+      if (params?.montant_min) qs.set("montant_min", String(params.montant_min));
+      if (params?.montant_max) qs.set("montant_max", String(params.montant_max));
+      if (params?.date_debut) qs.set("date_debut", params.date_debut);
+      if (params?.date_fin) qs.set("date_fin", params.date_fin);
+      const suffix = qs.toString() ? `?${qs.toString()}` : "";
+      return appel(`/honoraires/paiements${suffix}`);
+    },
+    marquerPaye: (id: number) => appel(`/honoraires/${id}/marquer-paye`, { method: "POST", body: JSON.stringify({}) }),
+    supprimer: (id: number) => appel(`/honoraires/${id}`, { method: "DELETE" }),
+  },
+
+  depensesCabinet: {
+    lister: () => appel("/depenses-cabinet"),
+    creer: (data: Record<string, unknown>) =>
+      appel("/depenses-cabinet", { method: "POST", body: JSON.stringify(data) }),
+    supprimer: (id: number) => appel(`/depenses/${id}`, { method: "DELETE" }),
+  },
+
+  cabinet: {
+    stats: (params?: { date_debut?: string; date_fin?: string }) => {
+      const qs = new URLSearchParams();
+      if (params?.date_debut) qs.set("date_debut", params.date_debut);
+      if (params?.date_fin) qs.set("date_fin", params.date_fin);
+      const suffix = qs.toString() ? `?${qs.toString()}` : "";
+      return appel(`/cabinet/stats${suffix}`);
+    },
   },
 };

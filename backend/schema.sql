@@ -40,6 +40,9 @@ create table entreprises (
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
+create type type_client_entreprise as enum ('MORALE', 'PHYSIQUE');
+
+alter table entreprises add column type_client type_client_entreprise not null default 'MORALE';
 
 -- ---------- Lien Utilisateur CLIENT -> Entreprise (accès restreint) ----------
 -- NULL pour le staff du cabinet (ils voient tout).

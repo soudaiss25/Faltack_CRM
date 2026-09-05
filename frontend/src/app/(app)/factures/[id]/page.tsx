@@ -51,19 +51,24 @@ export default function PageDetailFacture({ params }: { params: Promise<{ id: st
         <div>
           <h1 className="font-[family-name:var(--font-display)] text-2xl text-text font-mono">{facture.numero}</h1>
           <p className="text-text-muted text-sm mt-1">
-            {facture.Entreprise?.nom} · émise le {new Date(facture.date_emission).toLocaleDateString("fr-FR")}
+            {facture.Entreprise && (
+              <Link href={`/entreprises/${facture.Entreprise.id}`} className="hover:text-accent transition-colors underline decoration-dotted underline-offset-2">
+                {facture.Entreprise.nom}
+              </Link>
+            )}
+            {" "}· émise le {new Date(facture.date_emission).toLocaleDateString("fr-FR")}
             {facture.date_echeance ? ` · échéance ${new Date(facture.date_echeance).toLocaleDateString("fr-FR")}` : ""}
           </p>
         </div>
         <span className="text-xs px-2.5 py-1 rounded-full bg-accent-soft text-accent">{LABEL_STATUT[facture.statut]}</span>
       </header>
 
-                <button
+      <button
         onClick={() => api.factures.telechargerPDF(facture.id, facture.numero)}
         className="flex items-center gap-1.5 text-sm text-text-muted hover:text-accent border border-border rounded-md px-3 py-1.5 mb-6 transition-colors"
-        >
+      >
         <Download size={14} /> Télécharger le PDF
-        </button>
+      </button>
 
       <div className="bg-surface border border-border rounded-lg overflow-hidden mb-6">
         <table className="w-full text-sm">

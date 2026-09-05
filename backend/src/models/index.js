@@ -6,6 +6,8 @@ const Facture = require("./Facture");
 const LigneFacture = require("./LigneFacture");
 const Paiement = require("./Paiement");
 const Interaction = require("./Interaction");
+const Depense = require("./Depense");
+const Honoraire = require("./Honoraire");
 
 Entreprise.hasMany(Contact, { foreignKey: "entreprise_id", as: "contacts" });
 Contact.belongsTo(Entreprise, { foreignKey: "entreprise_id" });
@@ -31,6 +33,12 @@ Interaction.belongsTo(Entreprise, { foreignKey: "entreprise_id" });
 Utilisateur.hasMany(Interaction, { foreignKey: "cree_par_id", as: "interactions_creees" });
 Interaction.belongsTo(Utilisateur, { foreignKey: "cree_par_id", as: "cree_par" });
 
+Entreprise.hasMany(Depense, { foreignKey: "entreprise_id", as: "depenses" });
+Depense.belongsTo(Entreprise, { foreignKey: "entreprise_id" });
+
+Entreprise.hasMany(Honoraire, { foreignKey: "entreprise_id", as: "honoraires" });
+Honoraire.belongsTo(Entreprise, { foreignKey: "entreprise_id" });
+
 module.exports = {
   sequelize,
   Utilisateur,
@@ -40,4 +48,6 @@ module.exports = {
   LigneFacture,
   Paiement,
   Interaction,
+  Depense,
+  Honoraire,
 };

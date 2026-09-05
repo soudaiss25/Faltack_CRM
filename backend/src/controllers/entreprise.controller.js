@@ -1,10 +1,10 @@
-const { Entreprise, Contact } = require("../models");
+const { Entreprise, Contact, Facture } = require("../models");
+const { calculerMontants, determinerStatutAffiche } = require("../utils/facturation");
 
 async function lister(req, res) {
-  const { statut } = req.query; // permet de filtrer /entreprises?statut=PROSPECT
+  const { statut } = req.query;
   const where = statut ? { statut } : {};
 
-  // Portée client : on force le filtre sur sa seule entreprise, quoi qu'il demande
   if (req.portee) {
     where.id = req.portee.entreprise_id;
   }
@@ -14,16 +14,36 @@ async function lister(req, res) {
 }
 
 async function obtenirUne(req, res) {
-  // Un client qui tente d'appeler /entreprises/<un autre id> se fait bloquer ici
+  if (!/^\d+$/.test(req.params.id)) {
+    return res.status(400).json({ erreur: "Identifiant d'entreprise invalide" });
+  }
   if (req.portee && Number(req.params.id) !== req.portee.entreprise_id) {
     return res.status(403).json({ erreur: "Accès non autorisé à cette entreprise" });
   }
 
-  const entreprise = await Entreprise.findByPk(req.params.id, {
-    include: ["contacts", "factures", "interactions"],
-  });
-  if (!entreprise) return res.status(404).json({ erreur: "Entreprise introuvable" });
-  res.json(entreprise);
+  try {
+    const entreprise = await Entreprise.findByPk(req.params.id, {
+      include: ["contacts", "interactions"],
+    });
+    if (!entreprise) return res.status(404).json({ erreur: "Entreprise introuvable" });
+
+    const factures = await Facture.findAll({
+      where: { entreprise_id: entreprise.id },
+      include: ["lignes", "paiements"],
+      order: [["date_emission", "DESC"]],
+    });
+
+    const facturesAvecMontants = factures.map((f) => {
+      const montants = calculerMontants(f);
+      return { ...f.toJSON(), statut: determinerStatutAffiche(f, montants), montants };
+    });
+
+    res.json({ ...entreprise.toJSON(), factures: facturesAvecMontants });
+  } catch (err) {
+    console.error("Erreur obtenirUne (entreprise) :", err.message);
+    if (err.original) console.error("   cause originale :", err.original.message);
+    res.status(500).json({ erreur: err.message || "Erreur lors du chargement de l'entreprise" });
+  }
 }
 
 async function creer(req, res) {
@@ -51,11 +71,6 @@ async function mettreAJour(req, res) {
   res.json(entreprise);
 }
 
-/**
- * L'action "un clic" demandée dans le cahier des charges :
- * fait avancer une entreprise dans le pipeline commercial.
- * POST /entreprises/:id/convertir  { statut: "SIGNE" }
- */
 async function convertir(req, res) {
   if (req.portee) {
     return res.status(403).json({ erreur: "Action réservée au staff du cabinet" });

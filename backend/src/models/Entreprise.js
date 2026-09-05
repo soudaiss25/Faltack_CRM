@@ -11,6 +11,10 @@ const Entreprise = sequelize.define("Entreprise", {
   nom: { type: DataTypes.STRING, allowNull: false },
   siret: { type: DataTypes.STRING, allowNull: true },
   adresse: { type: DataTypes.STRING, allowNull: true },
+   type_client: {
+    type: DataTypes.ENUM("MORALE", "PHYSIQUE"),
+    defaultValue: "MORALE",
+  },
   statut: {
     type: DataTypes.ENUM("PROSPECT", "DEVIS_ENVOYE", "SIGNE", "CLIENT_ACTIF"),
     defaultValue: "PROSPECT",

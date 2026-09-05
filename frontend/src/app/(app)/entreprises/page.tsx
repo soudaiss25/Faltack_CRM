@@ -35,9 +35,10 @@ export default function PageEntreprises() {
   const [entreprises, setEntreprises] = useState<Entreprise[]>([]);
   const [chargement, setChargement] = useState(true);
   const [modalOuverte, setModalOuverte] = useState(false);
+  const [erreur, setErreur] = useState("");
 
   function recharger() {
-    api.entreprises.lister().then(setEntreprises).finally(() => setChargement(false));
+    api.entreprises.lister().then(setEntreprises).catch((e) => setErreur(e.message)).finally(() => setChargement(false));
   }
 
   useEffect(recharger, []);
@@ -70,6 +71,8 @@ export default function PageEntreprises() {
 
       {chargement ? (
         <p className="text-text-muted text-sm">Chargement...</p>
+      ) : erreur ? (
+        <p className="text-danger text-sm bg-danger/10 border border-danger/30 rounded-md px-3 py-2">{erreur}</p>
       ) : entreprises.length === 0 ? (
         <p className="text-text-muted text-sm">Aucune entreprise pour le moment.</p>
       ) : (

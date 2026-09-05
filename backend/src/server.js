@@ -9,6 +9,12 @@ const factureRoutes = require("./routes/facture.routes");
 const dashboardRoutes = require("./routes/dashboard.routes");
 const contactRoutes = require("./routes/contact.routes");
 const interactionRoutes = require("./routes/interaction.routes");
+const depenseRoutes = require("./routes/depense.routes");
+const analyseRoutes = require("./routes/analyse.routes");
+
+const utilisateurRoutes = require("./routes/utilisateur.routes");
+const honoraireRoutes = require("./routes/honoraire.routes");
+const cabinetRoutes = require("./routes/cabinet.routes");
 
 const app = express();
 app.use(cors());
@@ -20,6 +26,11 @@ app.use("/api/factures", factureRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api", contactRoutes);
 app.use("/api", interactionRoutes);
+app.use("/api", depenseRoutes);
+app.use("/api", analyseRoutes);
+app.use("/api", honoraireRoutes);
+app.use("/api/cabinet", cabinetRoutes);
+app.use("/api/utilisateurs", utilisateurRoutes);
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 

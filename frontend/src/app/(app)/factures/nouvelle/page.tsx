@@ -25,6 +25,9 @@ function FormulaireNouvelleFacture() {
   const [erreur, setErreur] = useState("");
   const [enCours, setEnCours] = useState(false);
 
+  const lienRetour = entrepriseParDefaut ? `/entreprises/${entrepriseParDefaut}` : "/factures";
+  const labelRetour = entrepriseParDefaut ? "Retour à l'entreprise" : "Retour aux factures";
+
   useEffect(() => {
     api.entreprises.lister().then(setEntreprises);
   }, []);
@@ -71,8 +74,8 @@ function FormulaireNouvelleFacture() {
 
   return (
     <div className="p-8 max-w-2xl">
-      <Link href="/factures" className="inline-flex items-center gap-1.5 text-text-muted hover:text-text text-sm mb-6 transition-colors">
-        <ArrowLeft size={14} /> Retour aux factures
+      <Link href={lienRetour} className="inline-flex items-center gap-1.5 text-text-muted hover:text-text text-sm mb-6 transition-colors">
+        <ArrowLeft size={14} /> {labelRetour}
       </Link>
 
       <h1 className="font-[family-name:var(--font-display)] text-2xl text-text mb-6">Nouvelle facture</h1>
