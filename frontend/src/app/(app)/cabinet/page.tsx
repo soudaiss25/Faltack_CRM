@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { formaterMontant } from "@/lib/format";
 import { TrendingUp, TrendingDown, Wallet, Plus, Trash2, Trophy, Users, UserPlus, ListFilter } from "lucide-react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
@@ -81,6 +82,8 @@ function calculerBornes(preset: PresetId): { debut: string; fin: string } | null
 }
 
 export default function PageCabinet() {
+  const { utilisateur } = useAuth();
+  const estSuperAdmin = utilisateur?.role === "SUPER_ADMIN";
   const [ongletActif, setOngletActif] = useState<OngletCabinetId>("vue");
   const [stats, setStats] = useState<StatsCabinet | null>(null);
   const [depenses, setDepenses] = useState<DepenseInterne[]>([]);
@@ -232,12 +235,14 @@ export default function PageCabinet() {
             <section>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm text-text-muted">Dépenses internes ({depenses.length})</h2>
-                <button onClick={() => setFormulaireDepenseOuvert(!formulaireDepenseOuvert)} className="flex items-center gap-1.5 text-xs text-accent hover:opacity-80">
-                  <Plus size={14} /> Ajouter (salaire, loyer...)
-                </button>
+                {estSuperAdmin && (
+                  <button onClick={() => setFormulaireDepenseOuvert(!formulaireDepenseOuvert)} className="flex items-center gap-1.5 text-xs text-accent hover:opacity-80">
+                    <Plus size={14} /> Ajouter (salaire, loyer...)
+                  </button>
+                )}
               </div>
 
-              {formulaireDepenseOuvert && (
+              {formulaireDepenseOuvert && estSuperAdmin && (
                 <FormulaireDepenseCabinet onCree={() => { setFormulaireDepenseOuvert(false); rechargerDepenses(); charger(); }} />
               )}
 
@@ -253,12 +258,14 @@ export default function PageCabinet() {
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="text-danger text-sm">-{formaterMontant(d.montant)}</span>
-                        <button
-                          onClick={() => api.depensesCabinet.supprimer(d.id).then(() => { rechargerDepenses(); charger(); })}
-                          className="text-text-muted hover:text-danger transition-colors"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        {estSuperAdmin && (
+                          <button
+                            onClick={() => api.depensesCabinet.supprimer(d.id).then(() => { rechargerDepenses(); charger(); })}
+                            className="text-text-muted hover:text-danger transition-colors"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}

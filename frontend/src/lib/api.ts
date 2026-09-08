@@ -52,6 +52,7 @@ export const api = {
 
   factures: {
     lister: () => appel("/factures"),
+    listerImpayes: () => appel("/factures/impayes"),
     obtenir: (id: number) => appel(`/factures/${id}`),
     creer: (data: Record<string, unknown>) =>
       appel("/factures", { method: "POST", body: JSON.stringify(data) }),
@@ -103,7 +104,7 @@ export const api = {
     supprimer: (id: number) => appel(`/utilisateurs/${id}`, { method: "DELETE" }),
   },
 
-   honoraires: {
+  honoraires: {
     lister: (entrepriseId: number) => appel(`/entreprises/${entrepriseId}/honoraires`),
     creer: (entrepriseId: number, data: Record<string, unknown>) =>
       appel(`/entreprises/${entrepriseId}/honoraires`, { method: "POST", body: JSON.stringify(data) }),
@@ -138,5 +139,29 @@ export const api = {
       const suffix = qs.toString() ? `?${qs.toString()}` : "";
       return appel(`/cabinet/stats${suffix}`);
     },
+  },
+    documents: {
+    lister: (entrepriseId: number) => appel(`/entreprises/${entrepriseId}/documents`),
+    listerVersions: (entrepriseId: number, nomFichier: string) =>
+      appel(`/entreprises/${entrepriseId}/documents/${encodeURIComponent(nomFichier)}/versions`),
+    televerser: async (entrepriseId: number, fichier: File, categorie: string) => {
+      const token = localStorage.getItem("token");
+      const formData = new FormData();
+      formData.append("fichier", fichier);
+      formData.append("categorie", categorie);
+      const reponse = await fetch(`${API_URL}/entreprises/${entrepriseId}/documents`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const donnees = await reponse.json().catch(() => null);
+      if (!reponse.ok) throw new Error(donnees?.erreur || "Échec du téléversement");
+      return donnees;
+    },
+    telecharger: async (id: number) => {
+      const donnees = await appel(`/documents/${id}/telecharger`);
+      window.open(donnees.url, "_blank");
+    },
+    supprimer: (id: number) => appel(`/documents/${id}`, { method: "DELETE" }),
   },
 };

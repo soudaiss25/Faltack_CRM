@@ -24,6 +24,48 @@ async function lister(req, res) {
   res.json(resultat);
 }
 
+/**
+ * Tableau des impayés : toutes les factures dont le solde dû est encore > 0,
+ * hors brouillons, avec le nombre de jours de retard calculé par rapport à
+ * la date d'échéance. Utilisé pour les relances (section 8 du cahier des charges).
+ */
+async function listerImpayes(req, res) {
+  const where = req.portee ? { entreprise_id: req.portee.entreprise_id } : {};
+
+  const factures = await Facture.findAll({
+    where,
+    include: ["lignes", "paiements", { model: Entreprise, include: ["contacts"] }],
+    order: [["date_echeance", "ASC"]],
+  });
+
+  const aujourdhui = new Date();
+
+  const impayes = factures
+    .map((f) => {
+      const montants = calculerMontants(f);
+      const statutAffiche = determinerStatutAffiche(f, montants);
+      let joursRetard = null;
+      if (f.date_echeance) {
+        joursRetard = Math.floor((aujourdhui - new Date(f.date_echeance)) / (1000 * 60 * 60 * 24));
+      }
+      return {
+        id: f.id,
+        numero: f.numero,
+        entreprise: f.Entreprise ? { id: f.Entreprise.id, nom: f.Entreprise.nom } : null,
+        contacts: f.Entreprise?.contacts?.map((c) => ({ nom: c.nom, email: c.email })) || [],
+        date_emission: f.date_emission,
+        date_echeance: f.date_echeance,
+        montant_ttc: montants.montantTTC,
+        solde_du: montants.soldeDu,
+        statut: statutAffiche,
+        jours_retard: joursRetard,
+      };
+    })
+    .filter((f) => f.solde_du > 0.01 && f.statut !== "BROUILLON");
+
+  res.json(impayes);
+}
+
 async function obtenirUne(req, res) {
   const facture = await Facture.findByPk(req.params.id, {
     include: ["lignes", "paiements", { model: Entreprise }],
@@ -163,4 +205,4 @@ async function genererPDF(req, res) {
   doc.end();
 }
 
-module.exports = { lister, obtenirUne, creer, enregistrerPaiement, genererPDF };
+module.exports = { lister, listerImpayes, obtenirUne, creer, enregistrerPaiement, genererPDF };

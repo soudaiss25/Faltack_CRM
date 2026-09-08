@@ -41,6 +41,13 @@ async function supprimer(req, res) {
   if (req.portee && depense.entreprise_id !== req.portee.entreprise_id) {
     return res.status(403).json({ erreur: "Accès non autorisé" });
   }
+
+  // Même règle que pour la création : une dépense interne (entreprise_id null)
+  // ne peut être supprimée que par un super admin.
+  if (depense.entreprise_id === null && req.utilisateur?.role !== "SUPER_ADMIN") {
+    return res.status(403).json({ erreur: "Seul un super admin peut supprimer une dépense interne du cabinet" });
+  }
+
   await depense.destroy();
   res.status(204).send();
 }

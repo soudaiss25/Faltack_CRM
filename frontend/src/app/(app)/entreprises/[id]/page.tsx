@@ -8,7 +8,7 @@ import { formaterMontant } from "@/lib/format";
 import {
   ArrowLeft, Plus, Trash2, FileText, TrendingUp, TrendingDown,
   Wallet, LineChart as LineChartIcon, Percent, Clock,
-  CheckCircle2, AlertTriangle, Lightbulb,
+  CheckCircle2, AlertTriangle, Lightbulb, File as FileIcon, Download, X,
 } from "lucide-react";
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -54,6 +54,7 @@ const ONGLETS = [
   { id: "depenses", label: "Dépenses" },
   { id: "contacts", label: "Contacts" },
   { id: "historique", label: "Historique" },
+  { id: "documents", label: "Documents" },
   { id: "honoraires", label: "Prestations" },
 ] as const;
 type OngletId = typeof ONGLETS[number]["id"];
@@ -117,6 +118,7 @@ export default function PageDetailEntreprise({ params }: { params: Promise<{ id:
       {ongletActif === "historique" && (
         <HistoriqueCRM entrepriseId={entreprise.id} interactions={entreprise.interactions} estStaff={estStaff} onAjout={recharger} />
       )}
+      {ongletActif === "documents" && <OngletDocuments entrepriseId={entreprise.id} estStaff={estStaff} />}
       {ongletActif === "honoraires" && estStaff && <OngletHonoraires entrepriseId={entreprise.id} />}
     </div>
   );
@@ -555,6 +557,8 @@ function HistoriqueCRM({
 }
 
 function OngletHonoraires({ entrepriseId }: { entrepriseId: number }) {
+  const { utilisateur } = useAuth();
+  const estSuperAdmin = utilisateur?.role === "SUPER_ADMIN";
   const [honoraires, setHonoraires] = useState<Honoraire[]>([]);
   const [formulaireOuvert, setFormulaireOuvert] = useState(false);
   const [chargement, setChargement] = useState(true);
@@ -620,13 +624,15 @@ function OngletHonoraires({ entrepriseId }: { entrepriseId: number }) {
                 <span className="text-text text-sm">{formaterMontant(h.montant)}</span>
                 {h.date_paiement ? (
                   <span className="text-xs px-2 py-1 rounded-full bg-success/10 text-success font-medium">Payée</span>
-                ) : (
+                ) : estSuperAdmin ? (
                   <button
                     onClick={() => gererMarquerPaye(h.id)}
                     className="text-xs px-2 py-1 rounded-md border border-border text-text-muted hover:border-accent hover:text-accent transition-colors"
                   >
                     Marquer payée
                   </button>
+                ) : (
+                  <span className="text-xs text-text-muted italic">Non payée</span>
                 )}
                 <button onClick={() => gererSuppression(h.id)} className="text-text-muted hover:text-danger transition-colors">
                   <Trash2 size={14} />
@@ -669,5 +675,209 @@ function FormulaireHonoraire({ entrepriseId, onCree }: { entrepriseId: number; o
         Ajouter
       </button>
     </form>
+  );
+}
+
+type DocumentFichier = {
+  id: number;
+  nom_fichier: string;
+  taille: number;
+  type_mime: string | null;
+  categorie: string;
+  version: number;
+  createdAt: string;
+  televerse_par?: { id: number; nom: string };
+};
+
+const LABEL_CATEGORIE_DOC: Record<string, string> = {
+  CONTRAT: "Contrat",
+  JUSTIFICATIF: "Justificatif",
+  COURRIER: "Courrier",
+  AUTRE: "Autre",
+};
+
+function formaterTaille(octets: number) {
+  if (octets < 1024) return `${octets} o`;
+  if (octets < 1024 * 1024) return `${(octets / 1024).toFixed(0)} Ko`;
+  return `${(octets / (1024 * 1024)).toFixed(1)} Mo`;
+}
+
+function OngletDocuments({ entrepriseId, estStaff }: { entrepriseId: number; estStaff: boolean }) {
+  const [documents, setDocuments] = useState<DocumentFichier[]>([]);
+  const [formulaireOuvert, setFormulaireOuvert] = useState(false);
+  const [chargement, setChargement] = useState(true);
+  const [erreur, setErreur] = useState("");
+  const [recherche, setRecherche] = useState("");
+  const [documentVersions, setDocumentVersions] = useState<DocumentFichier | null>(null);
+
+  function recharger() {
+    api.documents.lister(entrepriseId).then(setDocuments).catch((e) => setErreur(e.message)).finally(() => setChargement(false));
+  }
+
+  useEffect(recharger, [entrepriseId]);
+
+  async function gererSuppression(id: number) {
+    setErreur("");
+    try {
+      await api.documents.supprimer(id);
+      recharger();
+    } catch (err) {
+      setErreur(err instanceof Error ? err.message : "Erreur");
+    }
+  }
+
+  const documentsAffiches = documents.filter((d) => d.nom_fichier.toLowerCase().includes(recherche.toLowerCase()));
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3 gap-3">
+        <h2 className="text-sm text-text-muted whitespace-nowrap">{documents.length} document(s)</h2>
+        <input
+          type="text"
+          placeholder="Rechercher un fichier..."
+          value={recherche}
+          onChange={(e) => setRecherche(e.target.value)}
+          className="flex-1 max-w-xs bg-surface-raised border border-border rounded-md px-3 py-1.5 text-xs text-text focus:outline-none focus:ring-1 focus:ring-accent"
+        />
+        {estStaff && (
+          <button onClick={() => setFormulaireOuvert(!formulaireOuvert)} className="flex items-center gap-1.5 text-xs text-accent hover:opacity-80 whitespace-nowrap">
+            <Plus size={14} /> Ajouter un document
+          </button>
+        )}
+      </div>
+
+      {erreur && <p className="text-danger text-xs mb-3">{erreur}</p>}
+
+      {formulaireOuvert && (
+        <FormulaireDocument entrepriseId={entrepriseId} onEnvoye={() => { setFormulaireOuvert(false); recharger(); }} />
+      )}
+
+      {chargement ? (
+        <p className="text-text-muted text-sm">Chargement...</p>
+      ) : documentsAffiches.length === 0 ? (
+        <p className="text-text-muted text-sm">
+          {recherche ? "Aucun document ne correspond à cette recherche." : "Aucun document pour cette entreprise."}
+        </p>
+      ) : (
+        <div className="bg-surface border border-border rounded-lg divide-y divide-border">
+          {documentsAffiches.map((d) => (
+            <div key={d.id} className="px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <FileIcon size={16} className="text-text-muted shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm text-text truncate">{d.nom_fichier}</p>
+                  <p className="text-xs text-text-muted">
+                    {LABEL_CATEGORIE_DOC[d.categorie] || d.categorie} · {formaterTaille(d.taille)}
+                    {" · "}{new Date(d.createdAt).toLocaleDateString("fr-FR")}
+                    {d.televerse_par ? ` · ${d.televerse_par.nom}` : ""}
+                    {d.version > 1 && (
+                      <button onClick={() => setDocumentVersions(d)} className="ml-1.5 text-accent hover:underline">
+                        v{d.version}
+                      </button>
+                    )}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <button onClick={() => api.documents.telecharger(d.id)} className="text-text-muted hover:text-accent transition-colors">
+                  <Download size={14} />
+                </button>
+                {estStaff && (
+                  <button onClick={() => gererSuppression(d.id)} className="text-text-muted hover:text-danger transition-colors">
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {documentVersions && (
+        <ModalVersions entrepriseId={entrepriseId} nomFichier={documentVersions.nom_fichier} onFermer={() => setDocumentVersions(null)} />
+      )}
+    </div>
+  );
+}
+
+function FormulaireDocument({ entrepriseId, onEnvoye }: { entrepriseId: number; onEnvoye: () => void }) {
+  const [fichier, setFichier] = useState<File | null>(null);
+  const [categorie, setCategorie] = useState("AUTRE");
+  const [envoiEnCours, setEnvoiEnCours] = useState(false);
+  const [erreur, setErreur] = useState("");
+
+  async function gererSoumission(e: React.FormEvent) {
+    e.preventDefault();
+    if (!fichier) {
+      setErreur("Choisis un fichier");
+      return;
+    }
+    setEnvoiEnCours(true);
+    setErreur("");
+    try {
+      await api.documents.televerser(entrepriseId, fichier, categorie);
+      onEnvoye();
+    } catch (err) {
+      setErreur(err instanceof Error ? err.message : "Erreur");
+    } finally {
+      setEnvoiEnCours(false);
+    }
+  }
+
+  return (
+    <form onSubmit={gererSoumission} className="bg-surface border border-border rounded-lg p-4 mb-3 grid grid-cols-2 gap-3">
+      <input
+        type="file"
+        required
+        onChange={(e) => setFichier(e.target.files?.[0] || null)}
+        className="col-span-2 bg-surface-raised border border-border rounded-md px-3 py-2 text-sm text-text file:mr-3 file:py-1 file:px-2 file:rounded-md file:border-0 file:bg-accent-soft file:text-accent file:text-xs"
+      />
+      <select value={categorie} onChange={(e) => setCategorie(e.target.value)}
+        className="col-span-2 bg-surface-raised border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-accent">
+        {Object.entries(LABEL_CATEGORIE_DOC).map(([cle, label]) => (
+          <option key={cle} value={cle}>{label}</option>
+        ))}
+      </select>
+      {erreur && <p className="col-span-2 text-danger text-xs">{erreur}</p>}
+      <button type="submit" disabled={envoiEnCours} className="col-span-2 bg-accent text-accent-contrast text-sm font-medium rounded-md py-2 hover:opacity-90 transition-opacity disabled:opacity-50">
+        {envoiEnCours ? "Envoi..." : "Téléverser"}
+      </button>
+    </form>
+  );
+}
+
+function ModalVersions({ entrepriseId, nomFichier, onFermer }: { entrepriseId: number; nomFichier: string; onFermer: () => void }) {
+  const [versions, setVersions] = useState<DocumentFichier[]>([]);
+  const [chargement, setChargement] = useState(true);
+
+  useEffect(() => {
+    api.documents.listerVersions(entrepriseId, nomFichier).then(setVersions).finally(() => setChargement(false));
+  }, [entrepriseId, nomFichier]);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={onFermer}>
+      <div className="bg-surface border border-border rounded-lg p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-text font-medium truncate">Versions — {nomFichier}</h2>
+          <button onClick={onFermer} className="text-text-muted hover:text-text shrink-0 ml-2">
+            <X size={18} />
+          </button>
+        </div>
+        {chargement ? (
+          <p className="text-text-muted text-sm">Chargement...</p>
+        ) : (
+          <div className="space-y-2">
+            {versions.map((v) => (
+              <div key={v.id} className="flex items-center justify-between px-3 py-2 bg-surface-raised rounded-md text-sm">
+                <span className="text-text">v{v.version} · {new Date(v.createdAt).toLocaleDateString("fr-FR")}</span>
+                <button onClick={() => api.documents.telecharger(v.id)} className="text-accent hover:opacity-80">
+                  <Download size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

@@ -7,6 +7,7 @@ router.use(verifierToken);
 router.use(appliquerPortee);
 
 router.get("/", ctrl.lister);
+router.get("/impayes", ctrl.listerImpayes);
 router.get("/:id", ctrl.obtenirUne);
 router.get("/:id/pdf", ctrl.genererPDF);
 router.post("/", ctrl.creer);

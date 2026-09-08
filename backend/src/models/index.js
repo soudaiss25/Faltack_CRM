@@ -8,6 +8,7 @@ const Paiement = require("./Paiement");
 const Interaction = require("./Interaction");
 const Depense = require("./Depense");
 const Honoraire = require("./Honoraire");
+const Document = require("./Document");
 
 Entreprise.hasMany(Contact, { foreignKey: "entreprise_id", as: "contacts" });
 Contact.belongsTo(Entreprise, { foreignKey: "entreprise_id" });
@@ -39,6 +40,12 @@ Depense.belongsTo(Entreprise, { foreignKey: "entreprise_id" });
 Entreprise.hasMany(Honoraire, { foreignKey: "entreprise_id", as: "honoraires" });
 Honoraire.belongsTo(Entreprise, { foreignKey: "entreprise_id" });
 
+Entreprise.hasMany(Document, { foreignKey: "entreprise_id", as: "documents" });
+Document.belongsTo(Entreprise, { foreignKey: "entreprise_id" });
+
+Utilisateur.hasMany(Document, { foreignKey: "televerse_par_id", as: "documents_televerses" });
+Document.belongsTo(Utilisateur, { foreignKey: "televerse_par_id", as: "televerse_par" });
+
 module.exports = {
   sequelize,
   Utilisateur,
@@ -50,4 +57,5 @@ module.exports = {
   Interaction,
   Depense,
   Honoraire,
+  Document,
 };

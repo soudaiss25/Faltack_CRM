@@ -15,6 +15,7 @@ const analyseRoutes = require("./routes/analyse.routes");
 const utilisateurRoutes = require("./routes/utilisateur.routes");
 const honoraireRoutes = require("./routes/honoraire.routes");
 const cabinetRoutes = require("./routes/cabinet.routes");
+const documentRoutes = require("./routes/document.routes");
 
 const app = express();
 app.use(cors());
@@ -31,6 +32,7 @@ app.use("/api", analyseRoutes);
 app.use("/api", honoraireRoutes);
 app.use("/api/cabinet", cabinetRoutes);
 app.use("/api/utilisateurs", utilisateurRoutes);
+app.use("/api", documentRoutes);
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 

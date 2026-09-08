@@ -1,12 +1,13 @@
 const express = require("express");
 const router = express.Router();
-const { verifierToken, appliquerPortee } = require("../middleware/auth");
+const { verifierToken, appliquerPortee, reserveSuperAdmin } = require("../middleware/auth");
 const ctrl = require("../controllers/depense.controller");
-router.get("/depenses-cabinet", ctrl.listerCabinet);
-router.post("/depenses-cabinet", ctrl.creerCabinet);
 
 router.use(verifierToken);
 router.use(appliquerPortee);
+
+router.get("/depenses-cabinet", ctrl.listerCabinet);
+router.post("/depenses-cabinet", reserveSuperAdmin, ctrl.creerCabinet);
 
 router.get("/entreprises/:entrepriseId/depenses", ctrl.lister);
 router.post("/entreprises/:entrepriseId/depenses", ctrl.creer);

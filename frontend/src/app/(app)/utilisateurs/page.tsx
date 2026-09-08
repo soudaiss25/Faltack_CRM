@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Plus, X, Trash2, ShieldCheck } from "lucide-react";
+import { Plus, X, Trash2, ShieldCheck, Pencil } from "lucide-react";
 
-type Utilisateur = { id: number; nom: string; email: string; role: string };
+type Utilisateur = { id: number; nom: string; email: string; role: string; telephone: string | null; adresse: string | null };
 
 export default function PageUtilisateurs() {
   const { utilisateur: moi } = useAuth();
@@ -13,6 +13,7 @@ export default function PageUtilisateurs() {
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState("");
   const [modalOuverte, setModalOuverte] = useState(false);
+  const [utilisateurEnEdition, setUtilisateurEnEdition] = useState<Utilisateur | null>(null);
 
   function recharger() {
     api.utilisateurs.lister().then(setUtilisateurs).catch((e) => setErreur(e.message)).finally(() => setChargement(false));
@@ -65,7 +66,11 @@ export default function PageUtilisateurs() {
                   {u.nom}
                   {u.role === "SUPER_ADMIN" && <ShieldCheck size={13} className="text-accent" />}
                 </p>
-                <p className="text-xs text-text-muted">{u.email}</p>
+                <p className="text-xs text-text-muted">
+                  {u.email}
+                  {u.telephone ? ` · ${u.telephone}` : ""}
+                </p>
+                {u.adresse && <p className="text-xs text-text-muted">{u.adresse}</p>}
               </div>
               <div className="flex items-center gap-3">
                 <select
@@ -77,6 +82,9 @@ export default function PageUtilisateurs() {
                   <option value="SUPER_ADMIN">Super admin</option>
                   <option value="COLLABORATEUR">Collaborateur</option>
                 </select>
+                <button onClick={() => setUtilisateurEnEdition(u)} className="text-text-muted hover:text-accent transition-colors">
+                  <Pencil size={14} />
+                </button>
                 {u.id !== moi.id && (
                   <button onClick={() => supprimer(u.id)} className="text-text-muted hover:text-danger transition-colors">
                     <Trash2 size={14} />
@@ -91,6 +99,14 @@ export default function PageUtilisateurs() {
       {modalOuverte && (
         <ModalNouvelUtilisateur onFerme={() => setModalOuverte(false)} onCree={() => { setModalOuverte(false); recharger(); }} />
       )}
+
+      {utilisateurEnEdition && (
+        <ModalModifierUtilisateur
+          utilisateur={utilisateurEnEdition}
+          onFerme={() => setUtilisateurEnEdition(null)}
+          onModifie={() => { setUtilisateurEnEdition(null); recharger(); }}
+        />
+      )}
     </div>
   );
 }
@@ -99,13 +115,15 @@ function ModalNouvelUtilisateur({ onFerme, onCree }: { onFerme: () => void; onCr
   const [nom, setNom] = useState("");
   const [email, setEmail] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
+  const [telephone, setTelephone] = useState("");
+  const [adresse, setAdresse] = useState("");
   const [role, setRole] = useState("COLLABORATEUR");
   const [erreur, setErreur] = useState("");
 
   async function gererSoumission(e: React.FormEvent) {
     e.preventDefault();
     try {
-      await api.utilisateurs.creer({ nom, email, mot_de_passe: motDePasse, role });
+      await api.utilisateurs.creer({ nom, email, mot_de_passe: motDePasse, role, telephone, adresse });
       onCree();
     } catch (err) {
       setErreur(err instanceof Error ? err.message : "Erreur");
@@ -133,6 +151,16 @@ function ModalNouvelUtilisateur({ onFerme, onCree }: { onFerme: () => void; onCr
               className="w-full bg-surface-raised border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-accent" />
           </div>
           <div>
+            <label className="block text-xs text-text-muted mb-1.5">Téléphone</label>
+            <input value={telephone} onChange={(e) => setTelephone(e.target.value)} placeholder="Optionnel"
+              className="w-full bg-surface-raised border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-accent" />
+          </div>
+          <div>
+            <label className="block text-xs text-text-muted mb-1.5">Adresse</label>
+            <input value={adresse} onChange={(e) => setAdresse(e.target.value)} placeholder="Optionnel"
+              className="w-full bg-surface-raised border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-accent" />
+          </div>
+          <div>
             <label className="block text-xs text-text-muted mb-1.5">Mot de passe provisoire</label>
             <input type="password" required value={motDePasse} onChange={(e) => setMotDePasse(e.target.value)}
               className="w-full bg-surface-raised border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-accent" />
@@ -154,3 +182,61 @@ function ModalNouvelUtilisateur({ onFerme, onCree }: { onFerme: () => void; onCr
     </div>
   );
 }
+
+function ModalModifierUtilisateur({
+  utilisateur, onFerme, onModifie,
+}: { utilisateur: Utilisateur; onFerme: () => void; onModifie: () => void }) {
+  const [nom, setNom] = useState(utilisateur.nom);
+  const [telephone, setTelephone] = useState(utilisateur.telephone || "");
+  const [adresse, setAdresse] = useState(utilisateur.adresse || "");
+  const [erreur, setErreur] = useState("");
+
+  async function gererSoumission(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      await api.utilisateurs.mettreAJour(utilisateur.id, { nom, telephone, adresse });
+      onModifie();
+    } catch (err) {
+      setErreur(err instanceof Error ? err.message : "Erreur");
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={onFerme}>
+      <div className="bg-surface border border-border rounded-lg p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-text font-medium">Modifier {utilisateur.nom}</h2>
+          <button onClick={onFerme} className="text-text-muted hover:text-text">
+            <X size={18} />
+          </button>
+        </div>
+        <form onSubmit={gererSoumission} className="space-y-3">
+          <div>
+            <label className="block text-xs text-text-muted mb-1.5">Nom</label>
+            <input required value={nom} onChange={(e) => setNom(e.target.value)}
+              className="w-full bg-surface-raised border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-accent" />
+          </div>
+          <div>
+            <label className="block text-xs text-text-muted mb-1.5">Email</label>
+            <input value={utilisateur.email} disabled
+              className="w-full bg-surface-raised border border-border rounded-md px-3 py-2 text-sm text-text-muted opacity-60 cursor-not-allowed" />
+          </div>
+          <div>
+            <label className="block text-xs text-text-muted mb-1.5">Téléphone</label>
+            <input value={telephone} onChange={(e) => setTelephone(e.target.value)} placeholder="Optionnel"
+              className="w-full bg-surface-raised border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-accent" />
+          </div>
+          <div>
+            <label className="block text-xs text-text-muted mb-1.5">Adresse</label>
+            <input value={adresse} onChange={(e) => setAdresse(e.target.value)} placeholder="Optionnel"
+              className="w-full bg-surface-raised border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-accent" />
+          </div>
+          {erreur && <p className="text-danger text-xs">{erreur}</p>}
+          <button type="submit" className="w-full bg-accent text-accent-contrast font-medium rounded-md py-2 text-sm hover:opacity-90 transition-opacity">
+            Enregistrer
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+} 
