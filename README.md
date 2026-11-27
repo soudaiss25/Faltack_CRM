@@ -1,8 +1,10 @@
 # Faltack CRM
 
-![Faltack CRM](docs/banniere.png)
-
 CRM et gestion financière pensés pour un cabinet comptable : suivi des entreprises clientes, facturation, paiements, impayés, dépenses, documents et pilotage de l'activité du cabinet.
+
+## Contexte
+
+Projet en cours de développement : un outil pour un cabinet comptable qui doit suivre ses entreprises clientes, ses factures et ses encaissements au même endroit. Les clients du cabinet ont aussi un accès en lecture seule à leurs propres données.
 
 ---
 
@@ -83,6 +85,14 @@ Connexion par email et mot de passe, mots de passe hachés avec bcrypt, sessions
 | Stockage fichiers | Supabase Storage |
 | Divers | PDFKit (factures), Multer (upload), bcrypt, JWT |
 
+## Points techniques intéressants
+
+- **Droits par rôle côté serveur** : trois rôles (super admin, collaborateur, client). Le middleware `appliquerPortee` ([`backend/src/middleware/auth.js`](backend/src/middleware/auth.js)) calcule une seule fois ce que l'utilisateur peut voir et restreint un client à sa seule entreprise, au lieu de répéter le contrôle dans chaque contrôleur.
+- **Authentification** : JWT et mots de passe hachés avec bcrypt ; accès aux utilisateurs réservé au super admin.
+- **Calculs métier isolés** : numérotation et calculs de facturation dans `backend/src/utils/facturation.js`, diagnostic financier dans `diagnostic.js`.
+- **Documents** : fichiers dans un bucket Supabase Storage privé.
+- **Tests / CI** : aucun test automatisé ni CI pour le moment.
+
 ## Architecture
 
 ```
@@ -139,6 +149,14 @@ npm run dev            # http://localhost:3000
 
 Variable optionnelle : `NEXT_PUBLIC_API_URL`, par défaut `http://localhost:4000/api`.
 
+## Capture supplémentaire
+
+<!-- TODO : ajouter une capture du tableau des impayés si souhaité -->
+
+## Statut
+
+En cours de développement.
+
 ## Feuille de route
 
 - [ ] Envoi automatique des relances par email
@@ -149,4 +167,4 @@ Variable optionnelle : `NEXT_PUBLIC_API_URL`, par défaut `http://localhost:4000
 
 ## Auteur
 
-Soudaiss Elfayadine — [LinkedIn](https://www.linkedin.com/in/VOTRE-PROFIL)
+Soudaiss Elfayadine — [LinkedIn](https://www.linkedin.com/in/soudaiss-elfayadine-b78741288/)
